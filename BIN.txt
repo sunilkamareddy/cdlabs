@@ -1,0 +1,861 @@
+PROG1 1.LEX
+%{
+#include<stdio.h>
+int lines=0,chars=0,words=0,spaces=0;
+%}
+%%
+\n	{lines++;} 
+\t	{spaces+=4;}
+[ ]	{spaces++;}
+[^ \t\n#]+ {words++;chars+=yyleng;} //[^ \t\n#] not space, tab, line, #
+# {return 0;}
+%%
+int yywrap()
+{
+	return 1;
+}
+int main()
+{
+	printf("Enter the string:\n");
+	yylex();
+	printf("Lines: %d\nWords: %d\nChars: %d\nSpaces: %d\n",lines,words,chars,spaces);
+	return 0;
+}
+
+
+PROG 1B 1.L
+%{
+#include "y.tab.h"
+%}
+%%
+"a"	{return 'a';}
+"b"	{return 'b';}
+"c" {return 'c';}
+.	{return yytext[0];}
+\n	{return 0;}
+%%
+
+1.Y
+%{
+#include<stdio.h>
+#include<stdlib.h>
+int yyerror();
+int yylex();
+%}
+%%
+S:A B
+;
+A:'a'A'b'
+|
+;
+B:'b'B'c'
+|
+;
+%%
+int main()
+{
+	printf("Enter the input:\n");
+	yyparse();
+	printf("Valid string\n");
+}
+int yyerror()
+{
+	printf("Invalid string\n");
+	exit(0);
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+PROG 2.L
+%{
+#include <stdio.h>
+int posint = 0, negint = 0, posfrac = 0, negfrac = 0;
+%}
+
+num [0-9]+
+
+posint \+?{num}
+negint -{num}
+
+posnum \+?{num}\/\+?{num}|-{num}\/-{num}
+negnum -{num}\/\+?{num}|\+?{num}\/-{num}
+
+%%
+
+{posint} posint++;
+
+{negint} negint++;
+
+{posnum} posfrac++;
+
+{negnum} negfrac++;
+
+[ \t] ;
+
+[\n] return 0;
+
+. ECHO;
+
+%%
+
+int yywrap(){}
+
+int main() {
+	yylex();
+	printf("Positive integers: %d\n", posint);
+	printf("Negative integers: %d\n", negint);
+	printf("Positive fractions: %d\n", posfrac);
+	printf("Negative fractions: %d\n", negfrac);
+}
+
+
+
+
+
+PROG 2
+2.L
+%{
+	#include "y.tab.h"
+	extern YYSTYPE yylval;
+%}
+%%
+[0-9]+	{yylval=atoi(yytext);return NUM;}
+[-+*/]	{return yytext[0];}
+.	{return yytext[0];}
+\n 	{return 0;}
+%%
+
+2.Y
+%{
+	#include<stdio.h>
+	#include<stdlib.h>		
+	int yylex();
+	int yyerror();
+	
+%}
+%token NUM
+%left '+' '-'
+%left '/' '*'
+%%
+S:I {printf("Result is %d\n",$$);}
+;
+I:I'+'I 	{$$=$1+$3;}
+|I'-'I 		{$$=$1-$3;}
+|I'*'I 		{$$=$1*$3;}
+|I'/'I 		{if($3==0){yyerror();}	else{$$=$1/$3;}}
+|'('I')'	{$$=$2;}
+|NUM		{$$=$1;}
+|'-'NUM		{$$=-$2;}
+;
+%%
+int main()
+{
+	printf("Enter operation:\n");
+	yyparse();
+	printf("Valid\n");
+	return 0;
+}
+int yyerror()
+{
+	printf("Invalid\n");
+	exit(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PROG 3.L
+%{
+	#include<stdio.h>
+	int single=0,multi=0,mlines=0;
+    FILE *commentFile;
+	// Removes all C Comments
+%}
+%%
+"//"[^\n]*	{single++;fprintf(commentFile,"%s\n",yytext);}
+"/*"([^*]|[*]+[^*/]|[*]*)*"*/"	{
+	multi++;
+	for(int i=0;i<yyleng;i++)
+	{
+		if(yytext[i]=='\n')
+			mlines++;
+	}
+    fprintf(commentFile,"%s\n",yytext);
+}
+. {fprintf(yyout,"%s",yytext);}
+%%
+int yywrap()
+{
+	return 1;
+}
+int main()
+{
+	yyin=fopen("input.txt","r");
+	yyout=fopen("output.txt","w");
+    commentFile=fopen("comments.txt","w");
+	yylex();
+	printf("Single: %d\n Multi: %d\nMlines: %d\n",single,multi,mlines);
+	return 0;
+}
+
+
+create new file input.txt
+#include <stdio.h>
+
+int main() {
+    int num1, num2, sum;
+
+    // Input the first number
+    printf("Enter the first number: ");
+    scanf("%d", &num1);
+
+    // Input the second number
+    printf("Enter the second number: ");
+    scanf("%d", &num2);
+
+    // Add the numbers
+    sum = num1 + num2;
+
+    // Display the result
+    printf("The sum of %d and %d is %d\n", num1, num2, sum);
+
+    /* This code will generate multiline comments
+    Line 2
+    Line 3 */
+
+    // This will also be a comments
+
+    /* Whatever can be written here *** asd   // asds  //  **** ****/
+
+    return 0;
+}
+
+
+3.L
+%{
+#include "y.tab.h"
+extern int yylval;
+%}
+
+%%
+"for" return FOR;
+"int"|"float"|"double"|"bool" return DATATYPE;
+">"|"<"|">="|"<="|"=="|"!=" return RELOP;
+[0-9]+ {yylval = atoi(yytext); return NUM;}
+[a-zA-Z] {yylval = yytext[0]; return IDEN;}
+[ \t] ; //ignore tabs and whitespace 
+\n return 0; //ignore newline
+. return yytext[0];
+%%
+
+3.Y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int loop_count = 0;
+%}
+
+%token NUM
+%token IDEN
+%token FOR
+%token DATATYPE
+%token RELOP
+// %token COMP_RELOP
+%left '+' '-'
+%left '*' '/'
+
+//declaration separate from assignment
+%%
+F : FOR '(' D ';' C ';' S1 ')' F1  {loop_count++;} |
+    FOR '(' ';' C ';' S1 ')' F1 {loop_count++;} |
+    FOR '(' D ';' ';' S1 ')' F1 {loop_count++;} |
+    FOR '(' ';' ';' S1 ')' F1 {loop_count++;} ;
+F1 : S1 ';' | '{' S '}' | F ;
+S : S1 ';' S | F S | ;
+S1 : A | E | D | ;
+D : DATATYPE IDEN | DATATYPE IDEN '=' E ;    //declaration
+A : IDEN '=' E ;   //T;  //assignment
+E : E '+' E | E '-' E | E '*' E | E '/' E | '-''-'E | '+''+'E | E'+''+' | E'-''-' | T ;  
+//expression
+C : T RELOP T; //simple comparision
+T : NUM | IDEN ;
+%%
+
+int main(){
+yyparse();
+printf("No. of for loops: %d\n",loop_count);
+return 0;
+}
+
+int yyerror(char *msg){
+printf("\nYACC error: %s\n", msg);
+exit(1);
+}	
+
+
+
+
+
+
+
+
+PROG 4.L
+%{
+    #include<stdio.h>
+    int id=0,key=0,op=0;
+%}
+
+%%
+"int"|"char"|"float"|"double"|"if"|"else"|"for"|"while"|"exit"|"return" {printf("Keyword\n");key++;}
+[a-zA-Z_][a-zA-Z0-9_]*  {printf("Identifier\n");id++;}
+[\+\-\*\/\%\^\&\|\!\=]  {printf("Operator\n");op++;}
+[^\n]*  {printf("Invalid\n");}
+%%
+
+
+int main()
+{
+    printf("Enter:\n");
+    yylex();
+    printf("Identifiers: %d\nKeywords: %d\nOperators: %d\n",id,key,op);
+    return 0;
+}
+int yywrap()
+{
+    return 1;
+}
+
+
+
+
+
+4.L
+%{
+    #include "y.tab.h"
+%}
+%%
+"if"    {return IF;}
+[a-zA-Z]*   {return IDEN;}
+[0-9]+  {return NUM;}
+[\n ]   ;
+.   {return yytext[0];}
+%%
+
+
+4.Y
+%{
+    #include<stdio.h>
+    #include<stdlib.h>
+    int cnt=0;
+%}
+%token IF IDEN NUM
+%%
+S:I
+;
+I:IF A B    {cnt++;}
+;
+A:'('E')'
+;
+E:IDEN Z IDEN
+|IDEN Z NUM
+|IDEN U
+|IDEN
+;
+Z:'='|'<'|'>'|'<''='|'>''='|'=''+'|'=''-'
+;
+U:'+''+'|'-''-'
+;
+B:B B
+|'{'B'}'
+|I
+|E';'
+|
+;
+%%
+int main()
+{
+    printf("Enter the snippet:\n");
+    yyparse();
+    printf("Count of if is %d\n",cnt);
+    return 0;
+}
+int yyerror()
+{
+    printf("Invalid\n");
+    exit(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+PROG 5.L
+%{
+#include "y.tab.h"
+%}
+
+%%
+"int"      { return INT; }
+"float"    { return FLOAT; }
+"char"     { return CHAR; }
+"double"   { return DOUBLE; }
+";"        { return SEMICOLON; }
+","        { return COMMA; }
+"["        { return LBRACKET; }
+"]"        { return RBRACKET; }
+[0-9]+     { yylval = atoi(yytext); return INT; }
+[a-zA-Z_][a-zA-Z0-9_]* { return ID; }
+[ \t\n]    { /* ignore whitespace */ }
+.          { return yytext[0]; }
+%%
+
+int yywrap() {
+    return 1;
+}
+
+
+5.Y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int yylex();
+
+int var_count = 0;
+
+void yyerror(const char *s);
+%}
+
+%token INT FLOAT CHAR DOUBLE
+%token ID
+%token SEMICOLON COMMA LBRACKET RBRACKET
+
+%%
+declaration: type var_list SEMICOLON { printf("Number of variables declared: %d\n", var_count); var_count = 0; }
+           ;
+
+type: INT { printf("Type: int\n"); }
+    | FLOAT { printf("Type: float\n"); }
+    | CHAR { printf("Type: char\n"); }
+    | DOUBLE { printf("Type: double\n"); }
+    ;
+
+var_list: var { var_count++; }
+        | var_list COMMA var { var_count++; }
+        ;
+
+var: ID
+   | ID LBRACKET INT RBRACKET
+   ;
+
+%%
+void yyerror(const char *s) {
+    fprintf(stderr, "Error: %s\n", s);
+}
+
+int main() {
+    printf("Enter a declaration statement:\n");
+    yyparse();
+    return 0;
+}
+
+
+
+
+
+
+
+PROG 6.L
+%{
+#include <string.h>
+
+#include "y.tab.h"
+%}
+
+
+%%
+
+[a-zA-Z_][a-zA-Z_0-9]* {
+	yylval.exp = strdup(yytext);
+	return IDEN;
+}
+
+[0-9]+ {
+	yylval.exp = strdup(yytext);
+	return NUM;
+}
+
+[-+*/] return yytext[0];
+
+[()=] return yytext[0];
+
+[\n]+ return '\n';
+
+[ \t]+ ;
+
+. ;
+
+%%
+
+6.Y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int yylex();
+int yyerror();
+
+extern FILE *yyin; // optional
+
+
+typedef char *string;
+
+struct {
+	string res, op1, op2;
+	char op;
+} code[100];
+int idx = -1;
+
+string addToTable(string, string, char);
+void threeAddressCode();
+void quadruples();
+%}
+
+%union {
+	char *exp;
+}
+
+%token <exp> IDEN NUM
+%type <exp> EXP
+
+%right '='
+%left '+' '-'
+%left '*' '/'
+
+%%
+
+STMTS	: STMTS STMT
+	|
+	;
+
+STMT	: EXP '\n'
+	;
+
+EXP : IDEN '=' EXP { $$ = addToTable($1, $3, '='); }
+    | EXP '+' EXP { $$ = addToTable($1, $3, '+'); }
+    | EXP '-' EXP { $$ = addToTable($1, $3, '-'); }
+    | EXP '*' EXP { $$ = addToTable($1, $3, '*'); }
+    | EXP '/' EXP { $$ = addToTable($1, $3, '/'); }
+    | '(' EXP ')' { $$ = $2; }
+    | IDEN { $$ = $1; }
+    | NUM { $$ = $1; }
+    ;
+
+%%
+
+int yyerror() {
+	printf("Error");
+	exit(0);
+}
+
+int main() {
+	// yyin = fopen("6.txt", "r"); 
+	// Only if input is given from text file
+	yyparse();
+
+	printf("\nThree address code:\n");
+	threeAddressCode();
+
+	printf("\nQuadruples:\n");
+	quadruples();
+}
+
+
+string addToTable(string op1, string op2, char op) {
+	if(op == '=') {
+		code[idx].res = op1;
+		return op1;
+	}
+
+	idx++;
+	string res = malloc(3);
+	sprintf(res, "@%c", idx + 'A');
+	code[idx].op1 = op1;
+	code[idx].op2 = op2;
+	code[idx].op = op;
+	code[idx].res = res;
+	return res;
+}
+
+void threeAddressCode() {
+	for(int i = 0; i <= idx; i++) {
+		printf("%s = %s %c %s\n", code[i].res, code[i].op1, code[i].op, code[i].op2);
+	}
+}
+
+
+void quadruples() {
+	for(int i = 0; i <= idx; i++) {
+		printf("%d:\t%s\t%s\t%s\t%c\n", i, code[i].res, code[i].op1, code[i].op2, code[i].op);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+PROG 7.L
+%{
+#include "y.tab.h"
+#include "string.h"   //need function to duplicate string strdup()
+extern YYSTYPE yylval;
+%}
+
+%%
+("void"|"int"|"float"|"char"|"double"|"bool")[ ]*[\*]? {yylval.str = strdup(yytext); ECHO; return DATATYPE;}
+[0-9]+ {yylval.num = atoi(yytext);ECHO; return NUM;}
+[a-zA-Z][a-zA-Z0-9_]* {yylval.str = strdup(yytext); ECHO; return IDEN; }
+[ \t] ; //ignore tabs and whitespace
+\n ;
+. return yytext[0];
+%%
+
+
+7.Y
+%{
+#include "stdio.h"
+#include "stdlib.h"
+int no_of_args=0;
+extern int yylex(); //I need this fxn to modify input stream location
+%}
+
+%union{
+char* str;
+int num;
+}
+%token <num> NUM
+%token <str> IDEN DATATYPE
+%type <num> FDEFS
+%left '+' '-'
+%left '*' '/'
+
+%%
+F : {no_of_args=0;} DATATYPE IDEN '(' FDEFS ')' F1  
+	{printf("\nFunction name: %s\nDatatype:%s\nNo. of args:%d\n",$3,$2,$5);};
+F1 : ';' F2 | '{' S '}' F2 ;
+F2 : F | ;  //either continue scanning for functions or stop
+FDEFS : {no_of_args++;} DATATYPE IDEN FDEFS1  { $$=no_of_args; } // printf("\n%s %s",$1, $2);}
+ 	| {
+	if (no_of_args>0) 
+	{yyerror("comma detected after function");}   //added method to check for empty string after comma in function definition
+	$$=0;};
+FDEFS1 : ',' FDEFS 
+	| ;
+S : S1 ';' S | ;
+S1 : A | D | E | ;
+D : DATATYPE IDEN | DATATYPE A ;
+A : IDEN '=' E | IDEN '=' E ',' A;
+E : E '+' E | E '-' E | E '*' E | E '/' E | '-''-'E |'+''+'E | E'+''+' |E'-''-' | T;
+T : NUM | IDEN;
+%%
+
+int main(){
+FILE *input_file = fopen("example.c","r");
+yyrestart(input_file);
+yyparse();
+}
+
+int yyerror(char *msg)
+{
+printf("YACC error: %s\n",msg);
+exit(1);
+}
+
+
+example.c create new file
+float *add(int *x, bool z, double y){
+	z = x*y;
+}
+
+void print_msg(char *msg, int z);
+
+int main(){
+	int x =0, a=3;
+}
+
+
+
+
+
+
+
+
+PROG 8.L
+%{
+#include <string.h>
+
+#include "y.tab.h"
+%}
+
+
+%%
+
+[a-zA-Z_][a-zA-Z_0-9]* {
+	yylval.exp = strdup(yytext);
+	return IDEN;
+}
+
+[0-9]+ {
+	yylval.exp = strdup(yytext);
+	return NUM;
+}
+
+[-+*/] return yytext[0];
+
+[()=] return yytext[0];
+
+[\n]+ return '\n';
+
+[ \t]+ ;
+
+. ;
+
+%%
+
+
+
+8.Y
+%{
+#include <stdio.h>
+#include <stdlib.h>
+int yylex();
+int yyerror();
+
+//extern FILE *yyin;
+
+typedef char *string;
+
+struct {
+	string res, op1, op2;
+	char op;
+} code[100];
+int idx = -1;
+
+string addToTable(string, string, char);
+void targetCode();
+%}
+
+%union {
+	char *exp;
+}
+
+%token <exp> IDEN NUM
+%type <exp> EXP
+
+%left '+' '-'
+%left '*' '/'
+
+%%
+
+STMTS	: STMTS STMT
+	|
+	;
+
+STMT	: EXP '\n'
+	;
+
+EXP	: EXP '+' EXP { $$ = addToTable($1, $3, '+'); }
+	| EXP '-' EXP { $$ = addToTable($1, $3, '-'); }
+	| EXP '*' EXP { $$ = addToTable($1, $3, '*'); }
+	| EXP '/' EXP { $$ = addToTable($1, $3, '/'); }
+	| '(' EXP ')' { $$ = $2; }
+	| IDEN '=' EXP { $$ = addToTable($1, $3, '='); }
+	| IDEN { $$ = $1; }
+	| NUM { $$ = $1; }
+	;
+
+%%
+
+int yyerror(const char *s) {
+	printf("Error %s", s);
+	exit(0);
+}
+
+int main() {
+	//yyin = fopen("8.txt", "r");
+	yyparse();
+
+	printf("\nTarget code:\n");
+	targetCode();
+}
+
+
+string addToTable(string op1, string op2, char op) {
+	if(op == '=') {
+		code[idx].res = op1;
+		return op1;
+	}
+
+	idx++;
+	string res = malloc(3);
+	sprintf(res, "@%c", idx + 'A');
+
+	code[idx].op1 = op1;
+	code[idx].op2 = op2;
+	code[idx].op = op;
+	code[idx].res = res;
+	return res;
+}
+
+void targetCode() {
+	for(int i = 0; i <= idx; i++) {
+		string instr;
+		switch(code[i].op) {
+		case '+': instr = "ADD"; break;
+		case '-': instr = "SUB"; break;
+		case '*': instr = "MUL"; break;
+		case '/': instr = "DIV"; break;
+		}
+
+		printf("LOAD\t R1, %s\n", code[i].op1);
+		printf("LOAD\t R2, %s\n", code[i].op2);
+		printf("%s\t R3, R1, R2\n", instr);
+		printf("STORE\t %s, R3\n", code[i].res);
+	}
+}
